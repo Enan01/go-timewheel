@@ -177,9 +177,11 @@ func (tw *TimeWheel) Stop() {
 }
 
 func (tw *TimeWheel) collectTask(task *Task) {
-	delete(tw.bucketIndexes, task.id)
-	delete(tw.buckets[tw.currentIndex], task.id)
-
+	index, ok := tw.bucketIndexes[task.id]
+	if ok {
+		delete(tw.bucketIndexes, task.id)
+		delete(tw.buckets[index], task.id)
+	}
 	if tw.syncPool {
 		defaultTaskPool.put(task)
 	}
@@ -205,14 +207,13 @@ func (tw *TimeWheel) handleTick() {
 			task.callback()
 		}
 
+		// gc
+		tw.collectTask(task)
+
 		// circle
 		if task.circle == true {
 			tw.putCircle(task, modeIsCircle)
-			continue
 		}
-
-		// gc
-		tw.collectTask(task)
 	}
 
 	if tw.currentIndex == tw.bucketsNum-1 {
